@@ -13,8 +13,20 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
+
+      if (session?.user) {
+        window.pendo.identify({
+          visitor: {
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name
+          }
+        })
+      } else if (event === 'SIGNED_OUT') {
+        window.pendo.clearSession()
+      }
     })
 
     return () => subscription.unsubscribe()
