@@ -58,7 +58,14 @@ export default function Books() {
     if (!childForm.name.trim()) return
     setSaving(true)
     const { error } = await supabase.from('children').insert({ ...childForm, parent_id: user.id })
-    if (!error) { setShowChildModal(false); setChildForm({ name: '', date_of_birth: '' }); fetchAll() }
+    if (!error) {
+      if (typeof pendo !== 'undefined') {
+        pendo.track('child_profile_created', {
+          has_date_of_birth: Boolean(childForm.date_of_birth),
+        })
+      }
+      setShowChildModal(false); setChildForm({ name: '', date_of_birth: '' }); fetchAll()
+    }
     setSaving(false)
   }
 
@@ -79,6 +86,14 @@ export default function Books() {
       const coverPage = { book_id: book.id, position: 0, canvas_data: { elements: [] }, aspect_ratio: bookForm.aspect_ratio }
       const pages = Array.from({ length: pageCount }, (_, i) => ({ book_id: book.id, position: i + 1, canvas_data: { elements: [] }, aspect_ratio: bookForm.aspect_ratio }))
       await supabase.from('pages').insert([coverPage, ...pages])
+      if (typeof pendo !== 'undefined') {
+        pendo.track('book_created', {
+          size_type: bookForm.size_type,
+          page_count: pageCount,
+          aspect_ratio: bookForm.aspect_ratio,
+          has_child_assigned: Boolean(bookForm.child_id),
+        })
+      }
       navigate(`/books/${book.id}`)
     }
     setSaving(false)
@@ -89,6 +104,11 @@ export default function Books() {
     e.preventDefault()
     if (!confirm('Delete this book?')) return
     await supabase.from('books').delete().eq('id', bookId)
+    if (typeof pendo !== 'undefined') {
+      pendo.track('book_deleted', {
+        book_id: bookId,
+      })
+    }
     fetchAll()
   }
 

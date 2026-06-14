@@ -21,7 +21,15 @@ export default function Signup() {
     setLoading(true)
     const { error } = await signUp(email, password, fullName)
     if (error) setError(error.message)
-    else setSuccess(true)
+    else {
+      if (typeof pendo !== 'undefined') {
+        pendo.track('account_signup_completed', {
+          auth_method: 'email',
+          has_full_name: Boolean(fullName.trim()),
+        })
+      }
+      setSuccess(true)
+    }
     setLoading(false)
   }
 
