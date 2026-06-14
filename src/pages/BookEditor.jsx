@@ -88,6 +88,14 @@ export default function BookEditor() {
     await saveCurrentPage()
     setSaved(true)
     setUnsaved(false)
+    if (typeof pendo !== 'undefined') {
+      pendo.track('book_saved', {
+        book_id: bookId,
+        current_page_index: currentPageIdx,
+        total_pages: pages.length,
+        element_count: elements.length,
+      })
+    }
     setTimeout(() => setSaved(false), 2000)
     setSaving(false)
   }
@@ -120,6 +128,14 @@ export default function BookEditor() {
     setElements(prev => [...prev, el])
     setSelectedId(el.id)
     setUnsaved(true)
+    if (typeof pendo !== 'undefined') {
+      pendo.track('image_uploaded', {
+        file_extension: ext,
+        page_position: currentPageIdx,
+        is_cover_page: currentPageIdx === 0,
+        book_id: bookId,
+      })
+    }
     e.target.value = ''
   }
 
@@ -398,6 +414,18 @@ function OrderModal({ book, pages, onClose, navigate }) {
 
       if (orderErr) throw new Error(orderErr.message)
 
+      if (typeof pendo !== 'undefined') {
+        pendo.track('order_created', {
+          order_id: order.id,
+          book_id: book.id,
+          print_quality: quality,
+          quantity: qty,
+          total_price_inr: total,
+          book_title: book.title,
+          page_count: pages.length,
+        })
+      }
+
       // Open Razorpay
       if (!window.Razorpay) {
         throw new Error('Razorpay checkout failed to load. Please refresh the page and try again.')
@@ -432,13 +460,41 @@ function OrderModal({ book, pages, onClose, navigate }) {
             if (!verify.ok) {
               console.error('Verification failed', data)
               try { await supabase.from('order_status_history').insert({ order_id: order.id, status: 'server_verify_failed', note: JSON.stringify(data) }) } catch(_){}
+              if (typeof pendo !== 'undefined') {
+                pendo.track('payment_failed', {
+                  order_id: order.id,
+                  book_id: book.id,
+                  error_type: 'verification_failed',
+                  total_price_inr: total,
+                  print_quality: quality,
+                })
+              }
               setErr('Payment verification failed — contact support')
             } else {
+              if (typeof pendo !== 'undefined') {
+                pendo.track('payment_completed', {
+                  order_id: order.id,
+                  book_id: book.id,
+                  print_quality: quality,
+                  quantity: qty,
+                  total_price_inr: total,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                })
+              }
               try { onClose() } catch(_){}
               navigate('/orders')
             }
           } catch (e) {
             console.error('Error calling verification endpoint', e)
+            if (typeof pendo !== 'undefined') {
+              pendo.track('payment_failed', {
+                order_id: order.id,
+                book_id: book.id,
+                error_type: 'verification_error',
+                total_price_inr: total,
+                print_quality: quality,
+              })
+            }
             setErr('Payment verification error')
           }
         },

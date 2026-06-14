@@ -18,7 +18,14 @@ export default function Login() {
     setLoading(true)
     const { error } = await signIn(email, password)
     if (error) setError(error.message)
-    else navigate('/books')
+    else {
+      if (typeof pendo !== 'undefined') {
+        pendo.track('account_login_completed', {
+          auth_method: 'email',
+        })
+      }
+      navigate('/books')
+    }
     setLoading(false)
   }
 
